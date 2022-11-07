@@ -13,52 +13,50 @@ from airflow.providers.apache.hive.operators.hive import HiveOperator
 BASE_ENDPOINT = 'CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_daily_reports/'
 
 
-def convert_date(dt):
-    return dt.strftime('%m-%d-%Y')
-
-
 def download_data(**kwargs):
-    exec_date = kwargs['templates_dict']['exec_date']
     conn = BaseHook.get_connection(kwargs['conn_id'])
-    url = conn.host + kwargs['base_endpoint'] + exec_date + '.csv'
-    logging.info(f"Sending GET request to {url}...")
+    url = conn.host + kwargs['base_endpoint'] + kwargs['exec_date'] + '.csv'
+    logging.info(f'Sending request to API url {url}')
     resp = requests.get(url)
     if resp.status_code == 200:
-        save_path = f'/opt/airflow/dags/files/{exec_date}.csv'
+        save_path = f"/opt/airflow/dags/files/{kwargs['exec_date']}.csv"
         logging.info(f'Request successful. Saving data to {save_path}')
         with open(save_path, 'w') as f:
             f.write(resp.text)
-        logging.info(f"Data saved successfully.")
+        logging.info('Data saved successfully.')
+    else:
+        raise ValueError(f'Unable get data from API {url}')
 
 
 default_args = {
+    'start_date': datetime(2022, 11, 1),
+    'end_date': datetime(2022, 11, 5),
     'owner': 'Airflow',
-    'email_on_failure': True,
+    'email': 'some-user@some-host.com',
     'email_on_retry': False,
-    'email': 'some-user@some-domain.com',
-    'depends_on_past': False,
+    'email_on_failure': True,
     'retries': 1,
     'retry_delay': 60,  # seconds
-    'start_date': datetime(2022, 4, 15),
-    'end_date': datetime(2022, 4, 20)
+    'depends_on_past': False
 }
 
 with DAG(
     dag_id='sample_dag',
     default_args=default_args,
     schedule_interval='0 7 * * *',
-    description='Даг для примера',
+    description='Загрузка ежедневной статистики по заболеваниям COVID-19',
+    tags=['High Load'],
     max_active_runs=2,
     concurrency=4,
     user_defined_macros={
-        'convert_date': convert_date
+        'convert_date': lambda dt: dt.strftime('%m-%d-%Y')
     }
 ) as main_dag:
 
     EXEC_DATE = '{{ convert_date(execution_date) }}'
 
-    is_covid_data_availabe = HttpSensor(
-        task_id='is_covid_data_availabe',
+    is_covid_data_available = HttpSensor(
+        task_id='is_covid_data_available',
         http_conn_id='covid_api',
         method='GET',
         endpoint=f'{BASE_ENDPOINT}{EXEC_DATE}.csv',
@@ -74,8 +72,6 @@ with DAG(
         op_kwargs={
             'conn_id': 'covid_api',
             'base_endpoint': BASE_ENDPOINT,
-        },
-        templates_dict={
             'exec_date': EXEC_DATE
         }
     )
@@ -146,4 +142,4 @@ with DAG(
         """
     )
 
-    is_covid_data_availabe >> download_covid_data >> move_to_hdfs >> process_data >> load_to_hive
+    is_covid_data_available >> download_covid_data >> move_to_hdfs >> process_data >> load_to_hive
