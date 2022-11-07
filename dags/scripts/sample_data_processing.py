@@ -23,6 +23,14 @@ def main(spark, exec_date):
 
     df.repartition(1).write.mode('overwrite').format('csv').save(res_path)
 
+    # df.schema:
+    #   country_region STRING,
+    #   total_confirmed INT,
+    #   total_deaths INT,
+    #   fatality_ratio DOUBLE,
+    #   world_case_pct DOUBLE,
+    #   world_death_pct DOUBLE
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

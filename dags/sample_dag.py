@@ -120,7 +120,7 @@ with DAG(
             country_region STRING,
             total_confirmed INT,
             total_deaths INT,
-            fataility_ratio DOUBLE,
+            fatality_ratio DOUBLE,
             world_case_pct DOUBLE,
             world_death_pct DOUBLE
         Поле партиционирования: exec_date
@@ -133,7 +133,7 @@ with DAG(
                 country_region STRING,
                 total_confirmed INT,
                 total_deaths INT,
-                fataility_ratio DOUBLE,
+                fatality_ratio DOUBLE,
                 world_case_pct DOUBLE,
                 world_death_pct DOUBLE
             )
